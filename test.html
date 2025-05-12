@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>test</title>
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+        background-color: #f4f4f4;
+      }
+      main {
+        padding-inline: 200px;
+      }
+      #vacancies-container {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .vacancy {
+        padding: 20px 30px;
+        background-color: white;
+        border: solid #e7e9ed 3px;
+        border-radius: 10px;
+      }
+      .company {
+        display: flex;
+        column-gap: 8px;
+        align-items: center; 
+      }
+      .tags {
+        display: flex;
+        gap: 4px;
+      }
+      .tag {
+        padding: 4px 8px;
+        background-color: #e7e9ed;
+        border-radius: 8px;
+      }
+      .company-reviews{
+        margin-left: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div id="filters-container"></div>
+      <h1>Вакансии по Ростовской области</h1>
+      <div id="vacancies-container"></div>
+    </main>
+  </body>
+  <script>
+    state = {
+      vacancies: {
+        isError: false,
+        isLoading: false,
+        items: [],
+      },
+    };
+
+    async function fetchVacancies() {
+      try {
+        state.vacancies.isLoading = true;
+        state.vacancies.isError = false;
+        const res = await fetch(
+          "https://api.hh.ru/vacancies?page=1&per_page=10&area=1530"
+        );
+        if (!res.ok) {
+          state.vacancies.isError = true;
+        } else {
+          const body = await res.json();
+          if (body.items) {
+            state.vacancies.items = body.items;
+          }
+        }
+      } catch (e) {
+        console.log(e);
+      } finally {
+        state.vacancies.isLoading = false;
+        renderVacancies();
+      }
+    }
+
+    function parseTags(item) {
+      let tags_arr = [];
+      if (item.experience) {
+        tags_arr.push(item.experience.name);
+      }
+      if (
+        Object.values(item.work_format).find((format) => format.id === "REMOTE")
+      ) {
+        tags_arr.push("Можно удалённо");
+      }
+      if (item.working_hours.length > 0) {
+        if (item.working_hours[0].name !== "Другое") {
+          tags_arr.push(item.working_hours[0].name);
+        }
+      }
+      if (item.work_schedule_by_days.length > 0) {
+        if (item.work_schedule_by_days[0].name !== "Другое") {
+          tags_arr.push(item.work_schedule_by_days[0].name);
+        }
+      }
+      let html = "";
+      tags_arr.forEach((tag) => {
+        html += `<div class="tag">${tag}</div>`;
+      });
+      return html;
+    }
+
+    function openVacancy(url) {
+      console.log("it works");
+      newWindow = window.open(url);
+      if (!newWindow.closed && newWindow) newWindow.focus();
+    }
+
+    function renderVacancies() {
+      let html = "";
+      if (state.vacancies.isError) {
+        html = "something went wrong";
+      } else if (state.vacancies.isLoading) {
+        html = "Loading...";
+      } else {
+        vacancies = state.vacancies.items;
+        for (let i = 0; i < vacancies.length; i++) {
+          item = vacancies[i];
+          let tags = parseTags(item);
+          html += `<div class="vacancy" onclick="openVacancy('${
+            item.alternate_url
+          }')">
+              <h2 class="name">${item.name}</h2>
+              ${
+                item.salary_range
+                  && `<p class="salary">${item.salary_range.from}${
+                      item.salary_range.to ? `-${item.salary_range.to}` : ""
+                    } ${item.salary_range.mode.name.toLowerCase()}</p>`
+                  
+              }
+              <div class="tags">${tags}</div>
+              <div class="company">
+                <h3 class="company-name">${item.employer.name}</h3>
+                ${
+                  item.employer.employer_rating
+                    ? `<p class="company-rating">${item.employer.employer_rating.total_rating}/5</p>
+                       <p class="company-reviews">${item.employer.employer_rating.reviews_count} отзывов</p>`
+                    : ""
+                }
+              </div>
+              <p class="area">${item.area.name}</p>
+            </div>`;
+        }
+      }
+      const container = document.getElementById("vacancies-container");
+      container.innerHTML = html;
+    }
+
+    function init() {
+      fetchVacancies();
+    }
+
+    window.onload = init;
+  </script>
+</html>
