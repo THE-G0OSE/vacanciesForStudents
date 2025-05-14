@@ -6,17 +6,23 @@
     <title>test</title>
     <style>
       body {
+        width: 100vw;
         padding: 0;
         margin: 0;
         background-color: #f4f4f4;
       }
       main {
-        padding-inline: 200px;
+        width: calc(100vw - 400px);
+        padding-left: 200px;
+        padding-right: 200px;
       }
       #vacancies-container {
         display: flex;
         flex-direction: column;
+        margin-top: 20px;
+        margin-bottom: 20px;
         gap: 16px;
+        min-height: 100vh;
       }
       .vacancy {
         padding: 20px 30px;
@@ -27,7 +33,7 @@
       .company {
         display: flex;
         column-gap: 8px;
-        align-items: center; 
+        align-items: center;
       }
       .tags {
         display: flex;
@@ -38,8 +44,46 @@
         background-color: #e7e9ed;
         border-radius: 8px;
       }
-      .company-reviews{
+      .company-reviews {
         margin-left: 20px;
+      }
+      .paginator {
+        display: grid;
+        grid-template-columns: 66px 1fr 66px;
+        column-gap: 10px;
+        width: 100%;
+      }
+      .page-buttons {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+      }
+      .page-numbers {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 6px;
+        overflow: hidden;
+        justify-content: center;
+      }
+      .page-button {
+        width: 30px;
+        height: 30px;
+        background-color: #1b57b2;
+        color: white;
+        border: none;
+        border-radius: 9px;
+        flex-shrink: 0;
+      }
+      .active {
+        background-color: #4d89e4;
+      }
+      @media (max-width: 1024px) {
+        main {
+          padding-left: 20px;
+          padding-right: 20px;
+          width: calc(100vw - 40px);
+        }
       }
     </style>
   </head>
@@ -48,27 +92,64 @@
     <main>
       <div id="filters-container"></div>
       <h1>Вакансии по Ростовской области</h1>
+      <div class="paginator">
+        <div class="page-buttons">
+          <button class="page-button"><<</button>
+          <button onclick="setPrevPage()" class="page-button"><</button>
+        </div>
+        <div class="page-numbers"></div>
+        <div class="page-buttons">
+          <button onclick="setNextPage()" class="page-button">></button>
+          <button class="page-button">>></button>
+        </div>
+      </div>
       <div id="vacancies-container"></div>
+      <div class="paginator">
+        <div class="page-buttons">
+          <button class="page-button"><<</button>
+          <button class="page-button"><</button>
+        </div>
+        <div class="page-numbers"></div>
+        <div class="page-buttons">
+          <button class="page-button">></button>
+          <button class="page-button">>></button>
+        </div>
+      </div>
     </main>
   </body>
   <script>
+    //--------state--------
+
     state = {
       vacancies: {
         isError: false,
         isLoading: false,
         items: [],
+        fetchquery: {
+          page: 0,
+        },
       },
     };
 
-    async function fetchVacancies() {
+    //---------------------
+
+    //------------------------------------------api--------------------------------------
+
+    const fetchVacancies = async () => {
+      let interval
       try {
         state.vacancies.isLoading = true;
         state.vacancies.isError = false;
+        query = state.vacancies.fetchquery;
+        interval = setInterval(() => {
+          renderVacancies()
+        }, 200);
         const res = await fetch(
-          "https://api.hh.ru/vacancies?page=1&per_page=10&area=1530"
+          `https://api.hh.ru/vacancies?page=${query.page}&per_page=10&area=1530`
         );
         if (!res.ok) {
           state.vacancies.isError = true;
+          clearInterval(interval)
         } else {
           const body = await res.json();
           if (body.items) {
@@ -76,14 +157,28 @@
           }
         }
       } catch (e) {
+        state.vacancies.isError = true;
         console.log(e);
+        clearInterval(interval)
       } finally {
         state.vacancies.isLoading = false;
-        renderVacancies();
+        clearInterval(interval)
+        renderVacancies()
       }
-    }
+    };
 
-    function parseTags(item) {
+    //-----------------------------------------------------------------------------------
+
+    // -----------------vacancy building-------------------------
+
+    const onVacancyClick = (url) => {
+      //open hh.ru on new page
+      console.log("it works");
+      newWindow = window.open(url);
+      if (!newWindow.closed && newWindow) newWindow.focus();
+    };
+
+    const parseTags = (item, vacancyTags) => {
       let tags_arr = [];
       if (item.experience) {
         tags_arr.push(item.experience.name);
@@ -103,63 +198,180 @@
           tags_arr.push(item.work_schedule_by_days[0].name);
         }
       }
-      let html = "";
-      tags_arr.forEach((tag) => {
-        html += `<div class="tag">${tag}</div>`;
+      tags_arr.forEach((tagText) => {
+        const tag = document.createElement("div");
+        tag.className = "tag";
+        tag.innerText = tagText;
+        vacancyTags.appendChild(tag);
       });
-      return html;
-    }
+    };
 
-    function openVacancy(url) {
-      console.log("it works");
-      newWindow = window.open(url);
-      if (!newWindow.closed && newWindow) newWindow.focus();
-    }
+    const attachVacancyName = (name, vacancy) => {
+      const vacancyName = document.createElement("h2");
+      vacancyName.className = "name";
+      vacancyName.textContent = name;
+      vacancy.appendChild(vacancyName);
+    };
 
-    function renderVacancies() {
-      let html = "";
-      if (state.vacancies.isError) {
-        html = "something went wrong";
-      } else if (state.vacancies.isLoading) {
-        html = "Loading...";
+    const attachVacancySalary = (salary_range, vacancy) => {
+      if (salary_range) {
+        const vacancySalary = document.createElement("p");
+        vacancySalary.className = "salary";
+        let innerText = "";
+        if (salary_range.from) {
+          innerText += `от ${salary_range.from} `;
+        }
+        if (salary_range.to) {
+          innerText += ` до ${salary_range.to} `;
+        }
+        innerText += " " + salary_range.mode.name.toLowerCase();
+        vacancySalary.innerText = innerText;
+        vacancy.appendChild(vacancySalary);
+      }
+    };
+
+    const attachVacancyTags = (item, vacancy) => {
+      const vacancyTags = document.createElement("div");
+      vacancyTags.className = "tags";
+      parseTags(item, vacancyTags);
+      vacancy.appendChild(vacancyTags);
+    };
+
+    const attachVacancyCompany = (employer, vacancy) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "company";
+      const name = document.createElement("h3");
+      name.className = "company-name";
+      name.innerText = employer.name;
+      wrapper.appendChild(name);
+      if (employer.employer_rating) {
+        const rating = document.createElement("p");
+        rating.className = "company-rating";
+        rating.innerText = employer.employer_rating.total_rating + "/5";
+        const reviews = document.createElement("p");
+        reviews.className = "company-reviews";
+        reviews.innerText = employer.employer_rating.reviews_count + " отзывов";
+        wrapper.appendChild(rating);
+        wrapper.appendChild(reviews);
+      }
+      vacancy.appendChild(wrapper);
+    };
+
+    const attachVacancyArea = (area, vacancy) => {
+      const vacancyArea = document.createElement("p");
+      vacancyArea.className = "area";
+      vacancyArea.innerText = area.name;
+      vacancy.appendChild(vacancyArea);
+    };
+
+    const buildVacancy = (vacancy) => {
+      const vacancyComponent = document.createElement("div");
+      vacancyComponent.className = "vacancy";
+      vacancyComponent.addEventListener("click", () =>
+        onVacancyClick(vacancy.alternate_url)
+      );
+      attachVacancyName(vacancy.name, vacancyComponent);
+      attachVacancySalary(vacancy.salary_range, vacancyComponent);
+      attachVacancyTags(vacancy, vacancyComponent);
+      attachVacancyCompany(vacancy.employer, vacancyComponent);
+      attachVacancyArea(vacancy.area, vacancyComponent);
+      return vacancyComponent;
+    };
+
+    //-----------------------------------------------------------
+
+    //------------------pagination logic------------------------
+
+    const getPageArr = () => {
+      const currentPage = state.vacancies.fetchquery.page;
+      const container = document.getElementsByClassName("page-numbers").item(0);
+      const width = container.clientWidth;
+      const pageAmount = ~~((width + 6) / 36);
+      let pageArr = [];
+      if (currentPage < 4) {
+        for (let i = 0; i < pageAmount; i++) {
+          pageArr.push(i + 1);
+        }
       } else {
-        vacancies = state.vacancies.items;
-        for (let i = 0; i < vacancies.length; i++) {
-          item = vacancies[i];
-          let tags = parseTags(item);
-          html += `<div class="vacancy" onclick="openVacancy('${
-            item.alternate_url
-          }')">
-              <h2 class="name">${item.name}</h2>
-              ${
-                item.salary_range
-                  && `<p class="salary">${item.salary_range.from}${
-                      item.salary_range.to ? `-${item.salary_range.to}` : ""
-                    } ${item.salary_range.mode.name.toLowerCase()}</p>`
-                  
-              }
-              <div class="tags">${tags}</div>
-              <div class="company">
-                <h3 class="company-name">${item.employer.name}</h3>
-                ${
-                  item.employer.employer_rating
-                    ? `<p class="company-rating">${item.employer.employer_rating.total_rating}/5</p>
-                       <p class="company-reviews">${item.employer.employer_rating.reviews_count} отзывов</p>`
-                    : ""
-                }
-              </div>
-              <p class="area">${item.area.name}</p>
-            </div>`;
+        for (let i = 0; i < pageAmount; i++) {
+          pageArr.push(i + currentPage - 2);
         }
       }
-      const container = document.getElementById("vacancies-container");
-      container.innerHTML = html;
-    }
+      return pageArr;
+    };
 
-    function init() {
+    const setPage = (page) => {
+      state.vacancies.fetchquery.page = page;
       fetchVacancies();
-    }
+      renderPaginator();
+    };
+
+    const setNextPage = () => {
+      setPage(state.vacancies.fetchquery.page + 1);
+    };
+    const setPrevPage = () => {
+      if (state.vacancies.fetchquery.page > 0) {
+        setPage(state.vacancies.fetchquery.page - 1);
+      }
+    };
+
+    const pageButtonBuilder = (page) => {
+      const pageComponent = document.createElement("button");
+      pageComponent.className = `${
+        state.vacancies.fetchquery.page == page - 1
+          ? "page-button active"
+          : "page-button"
+      }`;
+      pageComponent.innerText = page;
+      pageComponent.addEventListener("click", () => setPage(page - 1));
+      return pageComponent;
+    };
+
+    //----------------------------------------------------------
+
+    //-------------------page changers---------------------
+
+    const renderVacancies = () => {
+      const container = document.getElementById("vacancies-container");
+      container.innerHTML = "";
+      if (state.vacancies.isError) {
+        container.innerText = "something went wrong";
+      } else if (state.vacancies.isLoading) {
+        container.innerText = "Loading...";
+      } else {
+        vacancies = state.vacancies.items;
+        vacancies.forEach((vacancy) => {
+          const vacancyComponent = buildVacancy(vacancy);
+          container.appendChild(vacancyComponent);
+        });
+      }
+    };
+
+    const renderPaginator = () => {
+      const paginators = document.querySelectorAll(".page-numbers");
+      paginators.forEach((item) => (item.innerHTML = ""));
+      const pageArr = getPageArr();
+      paginators.forEach((item) => {
+        pageArr.forEach((page) => {
+          const pageComponent = pageButtonBuilder(page);
+          item.appendChild(pageComponent);
+        });
+      });
+    };
+
+    window.onresize = renderPaginator;
+
+    //-------------------------------------------------------
+
+    //---------initialization-----------
+
+    const init = () => {
+      fetchVacancies();
+      renderPaginator();
+    };
 
     window.onload = init;
+
+    //----------------------------------
   </script>
 </html>
