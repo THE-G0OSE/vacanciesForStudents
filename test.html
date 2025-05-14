@@ -30,19 +30,34 @@
         border: solid #e7e9ed 3px;
         border-radius: 10px;
       }
+      .name {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        width: 100%;
+        overflow: hidden;
+      }
       .company {
         display: flex;
         column-gap: 8px;
         align-items: center;
       }
+      .company-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 70%;
+      }
       .tags {
         display: flex;
         gap: 4px;
+        overflow-x: scroll;
+        width: 100%;
       }
       .tag {
         padding: 4px 8px;
         background-color: #e7e9ed;
         border-radius: 8px;
+        white-space: nowrap;
       }
       .company-reviews {
         margin-left: 20px;
@@ -75,6 +90,10 @@
         border-radius: 9px;
         flex-shrink: 0;
       }
+      .page-button:hover {
+        background-color: #0b47a2;
+        cursor: pointer;
+      }
       .active {
         background-color: #4d89e4;
       }
@@ -83,6 +102,9 @@
           padding-left: 20px;
           padding-right: 20px;
           width: calc(100vw - 40px);
+        }
+        .company-name {
+          max-width: 50%;
         }
       }
     </style>
@@ -94,7 +116,7 @@
       <h1>Вакансии по Ростовской области</h1>
       <div class="paginator">
         <div class="page-buttons">
-          <button class="page-button"><<</button>
+          <button onclick="setFirstPage()" class="page-button"><<</button>
           <button onclick="setPrevPage()" class="page-button"><</button>
         </div>
         <div class="page-numbers"></div>
@@ -106,12 +128,12 @@
       <div id="vacancies-container"></div>
       <div class="paginator">
         <div class="page-buttons">
-          <button class="page-button"><<</button>
-          <button class="page-button"><</button>
+          <button onclick="setFirstPage()" class="page-button"><<</button>
+          <button onclick="setPrevPage()" class="page-button"><</button>
         </div>
         <div class="page-numbers"></div>
         <div class="page-buttons">
-          <button class="page-button">></button>
+          <button onclick="setNextPage()" class="page-button">></button>
           <button class="page-button">>></button>
         </div>
       </div>
@@ -136,20 +158,20 @@
     //------------------------------------------api--------------------------------------
 
     const fetchVacancies = async () => {
-      let interval
+      let interval;
       try {
         state.vacancies.isLoading = true;
         state.vacancies.isError = false;
         query = state.vacancies.fetchquery;
         interval = setInterval(() => {
-          renderVacancies()
+          renderVacancies();
         }, 200);
         const res = await fetch(
           `https://api.hh.ru/vacancies?page=${query.page}&per_page=10&area=1530`
         );
         if (!res.ok) {
           state.vacancies.isError = true;
-          clearInterval(interval)
+          clearInterval(interval);
         } else {
           const body = await res.json();
           if (body.items) {
@@ -159,11 +181,11 @@
       } catch (e) {
         state.vacancies.isError = true;
         console.log(e);
-        clearInterval(interval)
+        clearInterval(interval);
       } finally {
         state.vacancies.isLoading = false;
-        clearInterval(interval)
-        renderVacancies()
+        clearInterval(interval);
+        renderVacancies();
       }
     };
 
@@ -222,7 +244,7 @@
           innerText += `от ${salary_range.from} `;
         }
         if (salary_range.to) {
-          innerText += ` до ${salary_range.to} `;
+          innerText += `до ${salary_range.to} `;
         }
         innerText += " " + salary_range.mode.name.toLowerCase();
         vacancySalary.innerText = innerText;
@@ -314,6 +336,9 @@
         setPage(state.vacancies.fetchquery.page - 1);
       }
     };
+    const setFirstPage = () => {
+      setPage(0)
+    }
 
     const pageButtonBuilder = (page) => {
       const pageComponent = document.createElement("button");
