@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="index.css">
+    <title>test</title>
+  </head>
+  <body>
+    <header></header>
+    <main>
+      <div id="main-content">
+        <div id="searchbar-container">
+          <div id="searchbar-inner">
+            <div id="search-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" d="m21 21l-4.486-4.494M19 10.5a8.5 8.5 0 1 1-17 0a8.5 8.5 0 0 1 17 0Z"/></svg>
+            </div>
+            <input id="searchbar-input" oninput="debouncedOnSearchInput(event)" placeholder="Поиск"/>
+          </div>
+        </div> 
+        <button
+          onclick="openModal()"
+          class="full-width-button"
+          id="filters-button"
+        >
+          <span class="button-title">Фильтр</span>
+          <span class="button-icon">+</span>
+        </button>
+        <div id="filters-container"></div>
+        <div id="vacancies-container"></div>
+      </div>
+      <div id="modal-filters">
+        <div class="modal-filter-header">
+          <span>Фильтр</span
+          ><button onclick="closeModal()" class="modal-filter-close-button">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+            >
+              <path
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-width="2"
+                d="M20 20L4 4m16 0L4 20"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </main>
+  </body>
+  <script src="main.js"></script>
+</html>
